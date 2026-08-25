@@ -26,3 +26,14 @@ def test_transpile_join():
         "SELECT * FROM t1 JOIN t2 ON x = y", read="duckdb", write=Trino
     )
     assert "CROSS JOIN" not in result
+
+
+def test_trino_string_to_json_cast_uses_json_parse():
+    # GH #12073: Trino's `CAST(string AS JSON)` treats the input as a JSON
+    # scalar rather than parsing it, so it silently produces the wrong
+    # value for ordinary JSON-encoded strings (e.g. `'{"a":1}'`).
+    # `JSON_PARSE` is the correct way to parse a JSON string in Trino.
+    t = ibis.table({"raw": "string"}, name="events")
+    sql = ibis.to_sql(t.raw.cast("json"), dialect="trino")
+    assert "JSON_PARSE" in sql
+    assert "CAST" not in sql

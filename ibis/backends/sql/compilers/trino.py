@@ -597,6 +597,12 @@ class TrinoCompiler(SQLGlotCompiler):
                 return self.f.from_unixtime_nanos(
                     self.cast(arg, dt.Decimal(38, 9)) * 1_000_000_000
                 )
+        elif from_.is_string() and to.is_json():
+            # Trino's CAST(string AS JSON) treats the string as a JSON
+            # scalar (e.g. '"foo"'), not as JSON text to parse, so it
+            # silently returns NULL for ordinary JSON-encoded strings.
+            # JSON_PARSE is the correct way to parse a JSON string.
+            return self.f.json_parse(arg)
         return super().visit_Cast(op, arg=arg, to=to)
 
     def visit_CountDistinctStar(self, op, *, arg, where):
