@@ -26,3 +26,13 @@ def test_transpile_join():
         "SELECT * FROM t1 JOIN t2 ON x = y", read="duckdb", write=Trino
     )
     assert "CROSS JOIN" not in result
+
+
+def test_trino_string_to_json_cast_parses():
+    # GH #12073: `CAST(x AS JSON)` in Trino wraps a string as a JSON scalar
+    # instead of parsing it, so casting a string column to json must compile
+    # to `JSON_PARSE(x)` rather than a plain cast
+    t = ibis.table(dict(s="string"), name="t")
+    sql = str(ibis.to_sql(t.s.cast("json"), dialect="trino"))
+    assert "JSON_PARSE" in sql
+    assert "CAST" not in sql
