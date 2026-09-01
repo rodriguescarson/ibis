@@ -639,7 +639,11 @@ class MemtableManager:
     def _generate_volume_path(self) -> str:
         """Has runtime effects: prompts the user for a password, and fetches the current database and catalog from the backend."""
         short_version = "".join(map(str, sys.version_info[:3]))
-        volume_name = f"{getpass.getuser()}-py={short_version}-pid={os.getpid()}"
+        # `.` is a namespace separator for Unity Catalog identifiers, so an
+        # unsanitized username containing one (e.g. "first.last") gets split
+        # into extra segments and the generated volume is never found.
+        username = getpass.getuser().replace(".", "_")
+        volume_name = f"{username}-py={short_version}-pid={os.getpid()}"
         return f"/Volumes/{self._backend.current_catalog}/{self._backend.current_database}/{volume_name}"
 
     def _create_volume(self, path: str) -> None:
