@@ -360,7 +360,10 @@ class MSSQL(TSQL):
     class Generator(TSQL.Generator):
         TRANSFORMS = TSQL.Generator.TRANSFORMS.copy() | {
             sge.ApproxDistinct: rename_func("approx_count_distinct"),
-            sge.Stddev: rename_func("stdevp"),
+            # Stddev (the ambiguous/generic form) means sample stddev, matching StddevSamp
+            # below and every other dialect's TRANSFORMS in this file; only StddevPop is
+            # population. T-SQL's own STDEV/STDEVP functions follow that same split.
+            sge.Stddev: rename_func("stdev"),
             sge.StddevPop: rename_func("stdevp"),
             sge.StddevSamp: rename_func("stdev"),
             sge.Variance: rename_func("var"),
