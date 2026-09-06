@@ -683,6 +683,8 @@ class SQLGlotCompiler(abc.ABC):
             )
             merged_ctes.append(modified_cte)
         merged_ctes.extend(out.ctes)
+        existing_with = out.args.get(WITH_ARG)
+        is_recursive = bool(existing_with and existing_with.args.get("recursive"))
         out.args.pop(WITH_ARG, None)
 
         out = reduce(
@@ -695,6 +697,11 @@ class SQLGlotCompiler(abc.ABC):
             merged_ctes,
             out,
         )
+        # `with_()` above always rebuilds a non-recursive WITH clause, so a
+        # `WITH RECURSIVE` query (e.g. embedded via `Backend.sql()`) silently
+        # loses the RECURSIVE keyword unless we restore it here.
+        if is_recursive:
+            out.args[WITH_ARG].set("recursive", True)
 
         return out
 

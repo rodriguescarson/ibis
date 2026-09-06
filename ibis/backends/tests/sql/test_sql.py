@@ -20,6 +20,7 @@ import pytest
 from pytest import param
 
 import ibis
+import ibis.expr.operations as ops
 from ibis import _
 from ibis.backends.tests.sql.conftest import to_sql
 from ibis.tests.util import assert_decompile_roundtrip
@@ -665,6 +666,27 @@ def test_ctes_in_order():
 
     sql = ibis.to_sql(expr, dialect="duckdb")
     assert sql.find('"first" AS (') < sql.find('"second" AS (')
+
+
+def test_dot_sql_recursive_cte_keeps_recursive_keyword():
+    # A `WITH RECURSIVE` query embedded via `Backend.sql()` was silently
+    # losing the RECURSIVE keyword when its CTEs got merged back in by
+    # `SQLGlotCompiler.translate`, producing a plain `WITH` that backends
+    # reject for genuinely recursive CTEs (e.g. DuckDB's
+    # "Circular reference to CTE" binder error). See #11922, #11949, #10252.
+    query = """\
+WITH RECURSIVE power(n, e) AS (
+  SELECT 1, 1
+  UNION ALL
+  SELECT n * 2, e + 1 FROM power WHERE e < 5
+)
+SELECT * FROM power"""
+
+    op = ops.SQLQueryResult(
+        query=query, schema=ibis.schema({"n": "int64", "e": "int64"}), source=None
+    )
+    sql = ibis.to_sql(op.to_expr(), dialect="duckdb")
+    assert "WITH RECURSIVE" in sql
 
 
 @pytest.mark.parametrize(
