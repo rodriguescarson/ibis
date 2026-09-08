@@ -518,3 +518,24 @@ def test_basic_enum_schema_inference(con, converter):
     t = con.table(name)
     assert t.e.type() == dt.string
     assert set(converter(t.e)) == {"a", "b"}
+
+
+def test_sql_recursive_cte_preserves_recursive_keyword():
+    # https://github.com/ibis-project/ibis/issues/11922
+    # `con.sql()` on a raw `WITH RECURSIVE` query used to have the RECURSIVE
+    # keyword silently dropped when the CTE was merged back into the
+    # compiled statement, producing SQL that DuckDB rejects.
+    con = ibis.duckdb.connect()
+    sql = """
+    WITH RECURSIVE power(n, val) AS (
+        SELECT 1, 1
+        UNION ALL
+        SELECT n + 1, val * 2 FROM power WHERE n < 5
+    )
+    SELECT * FROM power
+    """
+    expr = con.sql(sql)
+    compiled = ibis.to_sql(expr, dialect="duckdb")
+    assert "RECURSIVE" in compiled
+    result = expr.execute()
+    assert result["val"].tolist() == [1, 2, 4, 8, 16]

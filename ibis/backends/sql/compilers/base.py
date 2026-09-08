@@ -683,6 +683,13 @@ class SQLGlotCompiler(abc.ABC):
             )
             merged_ctes.append(modified_cte)
         merged_ctes.extend(out.ctes)
+        # preserve a RECURSIVE flag from a raw WITH clause (e.g. from `con.sql(...)`)
+        # since `with_()` below rebuilds the WITH clause from scratch and defaults
+        # to non-recursive, silently dropping RECURSIVE otherwise
+        with_clause = out.args.get(WITH_ARG)
+        is_recursive = bool(
+            with_clause is not None and with_clause.args.get("recursive")
+        )
         out.args.pop(WITH_ARG, None)
 
         out = reduce(
@@ -690,6 +697,7 @@ class SQLGlotCompiler(abc.ABC):
                 cte.args["alias"],
                 as_=cte.args["this"],
                 dialect=self.dialect,
+                recursive=is_recursive,
                 copy=False,
             ),
             merged_ctes,
