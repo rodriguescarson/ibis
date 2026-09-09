@@ -4,7 +4,7 @@ import sqlglot as sg
 
 import ibis
 from ibis import _
-from ibis.backends.sql.dialects import Trino
+from ibis.backends.sql.dialects import MSSQL, Trino
 
 
 def test_window_with_row_number_compiles():
@@ -26,3 +26,12 @@ def test_transpile_join():
         "SELECT * FROM t1 JOIN t2 ON x = y", read="duckdb", write=Trino
     )
     assert "CROSS JOIN" not in result
+
+
+def test_mssql_stdev_round_trips_as_sample():
+    # GH #12057: T-SQL's unsuffixed STDEV() is the *sample* standard
+    # deviation (STDEVP() is population), so round-tripping it through the
+    # MSSQL dialect must not change which one gets computed.
+    (result,) = sg.transpile("SELECT STDEV(x) AS s FROM t", read="tsql", write=MSSQL)
+    assert "STDEV(x)" in result
+    assert "STDEVP" not in result
