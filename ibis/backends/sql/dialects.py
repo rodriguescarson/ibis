@@ -360,7 +360,10 @@ class MSSQL(TSQL):
     class Generator(TSQL.Generator):
         TRANSFORMS = TSQL.Generator.TRANSFORMS.copy() | {
             sge.ApproxDistinct: rename_func("approx_count_distinct"),
-            sge.Stddev: rename_func("stdevp"),
+            # T-SQL's STDEV is the sample standard deviation and STDEVP is
+            # the population standard deviation, so STDDEV (generic/sample)
+            # must map to STDEV, not STDEVP.
+            sge.Stddev: rename_func("stdev"),
             sge.StddevPop: rename_func("stdevp"),
             sge.StddevSamp: rename_func("stdev"),
             sge.Variance: rename_func("var"),
