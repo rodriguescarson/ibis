@@ -4,7 +4,7 @@ import sqlglot as sg
 
 import ibis
 from ibis import _
-from ibis.backends.sql.dialects import Trino
+from ibis.backends.sql.dialects import MSSQL, Trino
 
 
 def test_window_with_row_number_compiles():
@@ -26,3 +26,18 @@ def test_transpile_join():
         "SELECT * FROM t1 JOIN t2 ON x = y", read="duckdb", write=Trino
     )
     assert "CROSS JOIN" not in result
+
+
+def test_mssql_stdev_transpile_round_trip():
+    # GH #12057: STDEV (sample) was being rewritten to STDEVP (population)
+    # when transpiling T-SQL through the MSSQL dialect, silently changing
+    # the query's statistical semantics.
+    (result,) = sg.transpile(
+        "SELECT STDEV([x]) AS [s] FROM [t]", read=MSSQL, write=MSSQL
+    )
+    assert result == "SELECT STDEV([x]) AS [s] FROM [t]"
+
+    (result,) = sg.transpile(
+        "SELECT STDEVP([x]) AS [s] FROM [t]", read=MSSQL, write=MSSQL
+    )
+    assert result == "SELECT STDEVP([x]) AS [s] FROM [t]"
