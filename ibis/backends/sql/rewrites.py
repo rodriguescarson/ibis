@@ -203,6 +203,11 @@ def first_to_firstvalue(_, **kwargs):
             f"`{type(_.func).__name__.lower()}` with `where` is unsupported "
             "in a window function"
         )
+    if _.func.order_by:
+        raise com.UnsupportedOperationError(
+            f"`{type(_.func).__name__.lower()}` with `order_by` is unsupported "
+            "in a window function"
+        )
     klass = FirstValue if isinstance(_.func, ops.First) else LastValue
     return _.copy(func=klass(_.func.arg))
 
