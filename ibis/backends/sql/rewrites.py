@@ -450,13 +450,18 @@ def split_select_distinct_with_order_by(_):
     # local names, we always split SELECT DISTINCT from ORDER BY here. Otherwise we
     # could also avoid splitting if all sort keys appear in the select list.
     if _.distinct and _.sort_keys:
-        # select every visible field across all properties from the current
-        # query (e.g., include sort_keys and not just selections), in case the
-        # that query's selections don't include fields used in sort keys
+        # select every field referenced by the sort keys (e.g., include
+        # sort_keys and not just selections), in case that query's
+        # selections don't include fields used in sort keys
         #
-        # 1. start with all fields
+        # 1. start with the fields referenced by the sort keys only; a
+        # broader search (e.g., over the whole `Select` node) would also
+        # pick up fields that are only referenced in the WHERE clause,
+        # incorrectly pulling them into the inner DISTINCT's selection list
         additional_fields = {
-            field.name: field for field in _.find_below(ops.Field, filter=ops.Value)
+            field.name: field
+            for key in _.sort_keys
+            for field in key.find_below(ops.Field, filter=ops.Value)
         }
         # 2. then find any fields that are part of the current selection set,
         # either as a more complex expression or as a simple field reference

@@ -26,3 +26,19 @@ def test_transpile_join():
         "SELECT * FROM t1 JOIN t2 ON x = y", read="duckdb", write=Trino
     )
     assert "CROSS JOIN" not in result
+
+
+def test_distinct_order_by_only_scopes_sort_key_fields():
+    # GH #11671: `split_select_distinct_with_order_by` used to walk the
+    # entire `Select` node (including WHERE-clause predicates) when
+    # collecting fields to add to the inner subquery. This meant that a
+    # column referenced only in a filter predicate was incorrectly pulled
+    # into the inner DISTINCT's selection list, turning `DISTINCT id` into
+    # `DISTINCT *`, which can produce wrong (duplicated) results.
+    t = ibis.table({"id": "int64", "dt": "timestamp"}, name="t")
+    expr = t.filter(t.dt.date() >= "2024-01-01").select(_.id).distinct().order_by(_.id)
+
+    sql = ibis.to_sql(expr, dialect="trino")
+
+    assert "DISTINCT *" not in sql
+    assert 'SELECT DISTINCT\n    "t0"."id"' in sql
