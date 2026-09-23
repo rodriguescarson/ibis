@@ -7,6 +7,7 @@ import functools
 import getpass
 import json
 import os
+import re
 import sys
 import tempfile
 from typing import TYPE_CHECKING, Any
@@ -639,7 +640,11 @@ class MemtableManager:
     def _generate_volume_path(self) -> str:
         """Has runtime effects: prompts the user for a password, and fetches the current database and catalog from the backend."""
         short_version = "".join(map(str, sys.version_info[:3]))
-        volume_name = f"{getpass.getuser()}-py={short_version}-pid={os.getpid()}"
+        # Unity Catalog treats `.` (and other special characters) as a
+        # namespace separator in identifiers, so a username like
+        # "first.last" would otherwise produce an invalid volume path.
+        username = re.sub(r"[^A-Za-z0-9_-]", "_", getpass.getuser())
+        volume_name = f"{username}-py={short_version}-pid={os.getpid()}"
         return f"/Volumes/{self._backend.current_catalog}/{self._backend.current_database}/{volume_name}"
 
     def _create_volume(self, path: str) -> None:
