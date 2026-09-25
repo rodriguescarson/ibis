@@ -4,7 +4,7 @@ import sqlglot as sg
 
 import ibis
 from ibis import _
-from ibis.backends.sql.dialects import Trino
+from ibis.backends.sql.dialects import MSSQL, Trino
 
 
 def test_window_with_row_number_compiles():
@@ -26,3 +26,17 @@ def test_transpile_join():
         "SELECT * FROM t1 JOIN t2 ON x = y", read="duckdb", write=Trino
     )
     assert "CROSS JOIN" not in result
+
+
+def test_mssql_stdev_is_sample_not_population():
+    # GH #12057: the generic `STDEV` produced by T-SQL is the *sample*
+    # standard deviation (`STDEVP` is the population one), but the MSSQL
+    # generator was rewriting it to STDEVP, silently changing the result's
+    # statistical semantics on round-trip.
+    (result,) = sg.transpile("SELECT STDEV(x) FROM t", read="tsql", write=MSSQL)
+    assert "STDEVP" not in result
+    assert "STDEV(x)" in result
+
+    # STDEVP itself must still be left alone.
+    (result,) = sg.transpile("SELECT STDEVP(x) FROM t", read="tsql", write=MSSQL)
+    assert "STDEVP(x)" in result
