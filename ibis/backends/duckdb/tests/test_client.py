@@ -481,6 +481,24 @@ def test_create_table_from_in_memory_data(temp):
     assert con.con.execute("SHOW TABLES").fetchall() == [("foo",)]
 
 
+@pytest.mark.parametrize("temp", [False, True])
+def test_create_table_from_in_memory_data_overwrite(temp):
+    # regression test: create_table's DROP VIEW/TABLE statements must name
+    # their target via both `this` and `tables`, since sqlglot >=30.18
+    # renders sge.Drop from `tables` only, while older sqlglot renders it
+    # from `this` only. Passing just `this` drops the target name entirely
+    # on newer sqlglot, producing e.g. "DROP VIEW IF EXISTS" with no name.
+    con = ibis.duckdb.connect()
+    con.create_table("foo", pd.DataFrame({"id": [1, 2, 3]}), temp=temp)
+    con.create_table("foo", pd.DataFrame({"id": [4, 5]}), temp=temp, overwrite=True)
+
+    assert con.list_tables() == ["foo"]
+    assert con.con.execute("SELECT id FROM foo ORDER BY id").fetchall() == [
+        (4,),
+        (5,),
+    ]
+
+
 def test_create_table_with_quoted_columns():
     con = ibis.duckdb.connect()
     name = gen_name("quoted_columns_table")

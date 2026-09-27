@@ -236,14 +236,22 @@ class Backend(
 
                 if in_memory:
                     cur.execute(
-                        sge.Drop(kind="VIEW", this=table.get_name(), exists=True).sql(
-                            dialect
-                        )
+                        sge.Drop(
+                            kind="VIEW",
+                            this=table.get_name(),
+                            tables=[table.get_name()],
+                            exists=True,
+                        ).sql(dialect)
                     )
 
             if overwrite:
                 cur.execute(
-                    sge.Drop(kind="TABLE", this=final_table, exists=True).sql(dialect)
+                    sge.Drop(
+                        kind="TABLE",
+                        this=final_table,
+                        tables=[final_table],
+                        exists=True,
+                    ).sql(dialect)
                 )
                 # TODO: This branching should be removed once DuckDB >=0.9.3 is
                 # our lower bound (there's an upstream bug in 0.9.2 that
@@ -260,9 +268,12 @@ class Backend(
                         ).sql(dialect)
                     )
                     cur.execute(
-                        sge.Drop(kind="TABLE", this=initial_table, exists=True).sql(
-                            dialect
-                        )
+                        sge.Drop(
+                            kind="TABLE",
+                            this=initial_table,
+                            tables=[initial_table],
+                            exists=True,
+                        ).sql(dialect)
                     )
                 else:
                     cur.execute(
