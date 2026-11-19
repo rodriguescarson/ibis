@@ -1526,6 +1526,24 @@ def test_select_distinct_order_by_alias(backend, con):
     backend.assert_frame_equal(res, sol)
 
 
+def test_select_distinct_order_by_with_filter(backend, alltypes, df):
+    # GH #11671
+    expr = (
+        alltypes.filter(alltypes.id > 100)
+        .select("int_col")
+        .distinct()
+        .order_by("int_col")
+    )
+    res = expr.to_pandas()
+    sol = (
+        df.loc[df.id > 100, ["int_col"]]
+        .drop_duplicates()
+        .sort_values("int_col")
+        .reset_index(drop=True)
+    )
+    backend.assert_frame_equal(res, sol)
+
+
 def test_select_distinct_order_by_expr(backend, alltypes, df):
     res = alltypes.select("int_col").distinct().order_by(-_.int_col).to_pandas()
     sol = df[["int_col"]].drop_duplicates().sort_values("int_col", ascending=False)

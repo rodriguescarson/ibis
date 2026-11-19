@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 import sqlglot as sg
+from pytest import param
 
 import ibis
 from ibis import _
@@ -36,3 +37,20 @@ def test_to_sql_knows_every_sql_backend(dialect):
     # every SQL backend's compiler module has to be imported there
     expr = ibis.table({"a": "int64"}, name="t")
     assert ibis.to_sql(expr, dialect=dialect)
+
+
+@pytest.mark.parametrize(
+    ("selections", "expected"),
+    [
+        param({"id": _.id}, ["id"], id="field"),
+        param({"id": _.id, "y": _.x + 1}, ["id", "y"], id="expr"),
+    ],
+)
+def test_select_distinct_order_by_ignores_filter_columns(selections, expected):
+    # GH #11671
+    t = ibis.table({"id": "int64", "x": "int64", "z": "int64"}, name="t")
+    expr = t.filter(t.z > 0).select(**selections).distinct().order_by("id")
+    sql = ibis.to_sql(expr, dialect="trino")
+    inner = sg.parse_one(sql, read="trino").find(sg.exp.Subquery).this
+    assert inner.args["distinct"]
+    assert [e.alias_or_name for e in inner.expressions] == expected
