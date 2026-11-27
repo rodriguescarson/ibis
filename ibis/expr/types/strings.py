@@ -717,12 +717,15 @@ class StringValue(Value):
         fillchar: str | StringValue = " ",
         /,
     ) -> StringValue:
-        """Pad `arg` by truncating on the right or padding on the left.
+        """Pad `self` on the left to at least `width` characters.
+
+        Strings that are already `width` characters or longer are returned
+        unchanged, matching Python's `str.rjust`.
 
         Parameters
         ----------
         width
-            Length of output string
+            Minimum length of the output string
         fillchar
             Pad character
 
@@ -746,6 +749,16 @@ class StringValue(Value):
         │ --def           │
         │ -ghij           │
         └─────────────────┘
+        >>> t.s.lpad(3, "-")
+        ┏━━━━━━━━━━━━━━━━━┓
+        ┃ LPad(s, 3, '-') ┃
+        ┡━━━━━━━━━━━━━━━━━┩
+        │ string          │
+        ├─────────────────┤
+        │ abc             │
+        │ def             │
+        │ ghij            │
+        └─────────────────┘
         """
         return ops.LPad(self, width, fillchar).to_expr()
 
@@ -755,14 +768,17 @@ class StringValue(Value):
         fillchar: str | StringValue = " ",
         /,
     ) -> StringValue:
-        """Pad `self` by truncating or padding on the right.
+        """Pad `self` on the right to at least `width` characters.
+
+        Strings that are already `width` characters or longer are returned
+        unchanged, matching Python's `str.ljust`.
 
         Parameters
         ----------
         self
             String to pad
         width
-            Length of output string
+            Minimum length of the output string
         fillchar
             Pad character
 
@@ -785,6 +801,16 @@ class StringValue(Value):
         │ abc--           │
         │ def--           │
         │ ghij-           │
+        └─────────────────┘
+        >>> t.s.rpad(3, "-")
+        ┏━━━━━━━━━━━━━━━━━┓
+        ┃ RPad(s, 3, '-') ┃
+        ┡━━━━━━━━━━━━━━━━━┩
+        │ string          │
+        ├─────────────────┤
+        │ abc             │
+        │ def             │
+        │ ghij            │
         └─────────────────┘
         """
         return ops.RPad(self, width, fillchar).to_expr()
